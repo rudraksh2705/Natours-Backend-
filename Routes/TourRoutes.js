@@ -1,15 +1,10 @@
 const express = require("express");
 // const fs = require('fs');
 const tourController = require("./../Controllers/TourController");
+const authController = require("./../Controllers/authController");
 
 //Mounting the Router
 const Router = express.Router();
-
-// Router.param("id", (req, res, next, val) => {
-//   tourController.checkId;
-// });
-
-// Router.param("id", (req, res, next, val) => {});
 
 Router.route("/tour-stats").get(tourController.getTourStats);
 
@@ -21,12 +16,16 @@ Router.route("/top-5-cheap").get(
 );
 
 Router.route("/")
-  .get(tourController.getAllTours)
+  .get(authController.protect, tourController.getAllTours)
   .post(tourController.createTour);
 
 Router.route("/:id")
   .get(tourController.getTour)
   .patch(tourController.updateTour)
-  .delete(tourController.deleteTour);
+  .delete(
+    authController.protect,
+    authController.restrictedTo("admin"),
+    tourController.deleteTour
+  );
 
 module.exports = Router;

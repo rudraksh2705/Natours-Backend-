@@ -63,7 +63,8 @@ class APIFeatures {
 // GET ALL TOURS
 exports.getAllTours = catchAsync(async (req, res) => {
   const obj = new APIFeatures(Tour.find(), req.query);
-  await obj.filter().sort().fields().pagination();
+  obj.filter().sort().fields();
+  await obj.pagination();
   const result = await obj.query;
 
   res.status(200).json({
@@ -94,8 +95,11 @@ exports.getTour = catchAsync(async (req, res, next) => {
 });
 
 // CREATE TOUR
-exports.createTour = catchAsync(async (req, res) => {
+exports.createTour = catchAsync(async (req, res, next) => {
+  console.log("🔥 Incoming tour data:", req.body);
+
   const newTour = await Tour.create(req.body);
+  console.log("✅ Tour created successfully:", newTour);
 
   res.status(201).json({
     status: "success",

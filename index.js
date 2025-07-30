@@ -3,7 +3,7 @@ const morgan = require("morgan");
 const tourRouter = require("./Routes/TourRoutes");
 const userRouter = require("./Routes/UserRoutes");
 const AppError = require("./utils/appError");
-
+process.env.NODE_ENV = "Production";
 const handleCastErrorDB = (err) => {
   const message = `Invalid ${err.path} : ${err.value}`;
   return new AppError(message, 400);
@@ -20,11 +20,22 @@ const handleDuplicateFieldsDB = (err) => {
   return new AppError(message, 400);
 };
 
+function handleJWTError(err) {
+  return new AppError("Token is Invalid", 401);
+}
+
 const app = express();
 
 app.use(express.json());
+app.use(morgan("dev"));
 
 app.use(express.static(`${__dirname}/public`));
+
+app.use((req, res, next) => {
+  req.requestTime = new Date().toISOString;
+  // console.log(req.headers);
+  next();
+});
 
 app.use("/api/v1/tours", tourRouter);
 app.use("/api/v1/users", userRouter);
@@ -41,6 +52,7 @@ const sendErrorDev = (err, res) => {
     stack: err.stack,
   });
 };
+
 const sendErrorProd = (err, res) => {
   res.status(err.statusCode).json({
     status: err.status,
@@ -53,7 +65,9 @@ app.use((err, req, res, next) => {
   err.status = err.status || "error";
 
   if (process.env.NODE_ENV === "development") {
-    sendErrorDev(err, res);
+    let error = { ...err };
+    console.log(error);
+    sendErrorDev(error, res);
   } else if (process.env.NODE_ENV === "production") {
     let error = { ...err };
     if (error.name === "CastError") {
@@ -62,8 +76,10 @@ app.use((err, req, res, next) => {
       error = handleDuplicateFieldsDB(error);
     } else if (err.name === "ValidationError") {
       error = handleValidationError(error);
+    } else if (err.name === "JsonWebTokenError") {
+      error = handleJWTError(error);
     }
-    sendErrorProd(error, res);
+    sendErrorProd(err, res);
   }
 });
 
