@@ -45,12 +45,18 @@ const userSchema = new mongoose.Schema({
   passwordResetToken: String,
 
   passwordChangedAt: Date,
+
+  isActive: {
+    type: Boolean,
+    default: true,
+  },
 });
 
 /*
 Hashes the plain text password using bcrypt with 10 salt rounds.
 Replaces the plain password with the hashed one before saving to the database.
 */
+
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
   this.password = await bcrypt.hash(this.password, 10);
@@ -85,6 +91,11 @@ userSchema.methods.createPasswordResetToken = function () {
 
   return resetToken;
 };
+
+userSchema.pre(/^find/, function (next) {
+  this.find({ isActive: { $ne: false } });
+  next();
+});
 
 const user = mongoose.model("user", userSchema);
 

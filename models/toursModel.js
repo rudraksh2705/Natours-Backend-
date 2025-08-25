@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const { default: slugify } = require("slugify");
 const slug = require("slugify");
+const User = require("./UserModel");
 
 const tourSchema = new mongoose.Schema(
   {
@@ -85,6 +86,20 @@ const tourSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+
+    startLocation: {
+      //GeoJSON is used to specify geo data
+      type: {
+        type: String,
+        default: "Point",
+        enum: ["Point"],
+      },
+      coordinates: [Number],
+      address: String,
+      description: String,
+    },
+
+    guides: [{ type: mongoose.Schema.ObjectId, ref: "user" }],
   },
 
   {
@@ -101,7 +116,26 @@ tourSchema.pre("save", function (next) {
   next();
 });
 
-// tourSchema.post("save", function (doc, next) {});
+tourSchema.pre("save", async function (next) {
+  const guidesdata = this.guides.map(async (id) => await User.findById(id));
+  this.guides = await Promise.all(guidesdata);
+  next();
+});
+
+tourSchema.pre(/^find/, function (next) {
+  this.populate({
+    path: "guides",
+    select: "-__v -passwordChangedAt",
+  });
+
+  next();
+});
+
+tourSchema.virtual("reviews", {
+  ref: "Review",
+  foreignField: "tour_id",
+  localField: "_id",
+});
 
 //this points to document
 //did not persist in database ,we can not access by query

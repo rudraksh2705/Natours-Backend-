@@ -10,6 +10,7 @@ Router.post("/login", authController.login);
 
 Router.post("/forgotPassword", authController.forgotPassword);
 Router.patch("/resetPassword/:token", authController.resetPassword);
+Router.post("/deleteAccount", authController.deleteaccount);
 
 Router.patch("/changeCurrentPassword", authController.updatePassword);
 Router.patch("/updateUserInfo", authController.updateInfo);

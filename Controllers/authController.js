@@ -32,6 +32,14 @@ exports.signup = catchAsync(async (req, res) => {
   const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET);
   console.log("TOken created");
 
+  res.cookie("jwt", token, {
+    expires: new Date(
+      Date.now() + process.env.JWT_Cookie_expires_in * 24 * 60 * 60 * 1000
+    ),
+    secure: true,
+    httpOnly: true,
+  });
+
   res.status(201).json({
     status: "success",
     data: newUser,
@@ -82,6 +90,7 @@ exports.protect = catchAsync(async (req, res, next) => {
   const decoded = await promisify(jwt.verify)(token, secret);
 
   const freshUser = await user.findById(decoded.id);
+
   if (!freshUser) {
     return next(new AppError("The User Does not exist", 401));
   }
@@ -96,9 +105,6 @@ exports.protect = catchAsync(async (req, res, next) => {
 
 exports.restrictedTo = () => {
   return (req, res, next) => {
-    console.log("🔥 restrictedTo called");
-    console.log("User: ", req.user);
-
     if (req.user.role !== "admin" && req.user.role !== "lead-guide") {
       res.status(404).json({
         status: "error",
@@ -182,7 +188,7 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   FoundedUser.passwordResetToken = undefined;
   FoundedUser.passwordResetExpires = undefined;
 
-  await FoundedUser.save();
+  await FoundedUser.save({ validateBeforeSave: false });
 
   // 4. Log the user in, send JWT
   const token = jwt.sign({ id: FoundedUser._id }, secret);
@@ -243,7 +249,7 @@ exports.updatePassword = catchAsync(async (req, res, next) => {
   console.log(FoundUser.password);
   // FoundUser.passwordConfirm = FoundUser.password;
 
-  await FoundUser.save();
+  await FoundUser.save({ validateBeforeSave: false });
 
   // 5. Send new token
   const newToken = jwt.sign({ id: FoundUser._id }, secret);
@@ -292,6 +298,13 @@ exports.updateInfo = catchAsync(async (req, res) => {
       { [field]: value },
       { new: true } // return updated doc
     );
+    await FoundUser.save({ validateBeforeSave: false });
+
+    res.status(201).json({
+      status: "success",
+      message: "Data update successfuly",
+      FoundUser,
+    });
   } catch (err) {
     console.error("Save error:", err);
     return res.status(500).json({
@@ -300,4 +313,36 @@ exports.updateInfo = catchAsync(async (req, res) => {
       error: err.message,
     });
   }
+});
+
+exports.deleteaccount = catchAsync(async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    throw new AppError(
+      "You need to provide email and password for deleting account",
+      401
+    );
+  }
+
+  const FoundUser = await user.findOne({ email }).select("+password");
+
+  if (!FoundUser) {
+    throw new AppError("Incorrect email or password", 401);
+  }
+
+  console.log(FoundUser);
+  const isPasswordCorrect = await bcrypt.compare(password, FoundUser.password);
+
+  if (!isPasswordCorrect) {
+    throw new AppError("Incorrect email or password", 401);
+  }
+
+  FoundUser.isActive = false;
+  await FoundUser.save({ validateBeforeSave: false });
+
+  res.status(200).json({
+    status: "success",
+    message: "Your account has been deleted successfully",
+  });
 });
