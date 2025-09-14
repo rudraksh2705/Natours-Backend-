@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const { default: slugify } = require("slugify");
 const slug = require("slugify");
+const User = require("./UserModel");
 
 const tourSchema = new mongoose.Schema(
   {
@@ -85,6 +86,38 @@ const tourSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+
+    startLocation: {
+      type: {
+        type: String,
+        default: "Point",
+        enum: ["Point"],
+      },
+      coordinates: [Number],
+      address: String,
+      description: String,
+    },
+
+    locations: [
+      {
+        type: {
+          type: String,
+          default: "Point",
+          enum: ["Point"],
+        },
+        coordinates: [Number],
+        days: Number,
+        description: String,
+        address: String,
+      },
+    ],
+
+    guides: [
+      {
+        type: mongoose.Schema.ObjectId,
+        ref: "user",
+      },
+    ],
   },
 
   {
@@ -101,26 +134,28 @@ tourSchema.pre("save", function (next) {
   next();
 });
 
-// tourSchema.post("save", function (doc, next) {});
-
 //this points to document
 //did not persist in database ,we can not access by query
 tourSchema.virtual("durationWeeks").get(function () {
   return this.duration / 7;
 });
 
+tourSchema.virtual("reviews", {
+  ref: "Review",
+  foreignField: "tour",
+  localField: "_id",
+});
+
+tourSchema.pre(/^find/, function (next) {
+  console.log("hi");
+  this.find({ secretTour: { $ne: true } }); // ✅ no recursion
+  this.populate({ path: "guides", select: "-__v -passwordConfirm" });
+  next();
+});
+
 const Tour = mongoose.model("Tour", tourSchema);
 
 //this points to query
-tourSchema.pre(/^find/, function (next) {
-  this.find({ secretTour: { $ne: true } });
-  next();
-});
-
-tourSchema.post(/^find/, function (docs, next) {
-  //Sample
-  next();
-});
 
 //this refers to aggregation object
 tourSchema.pre("aggregate", function (next) {

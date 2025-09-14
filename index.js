@@ -2,8 +2,9 @@ const express = require("express");
 const morgan = require("morgan");
 const tourRouter = require("./Routes/TourRoutes");
 const userRouter = require("./Routes/UserRoutes");
+const reviewRouter = require("./Routes/reviewRoutes");
 const AppError = require("./utils/appError");
-process.env.NODE_ENV = "Production";
+
 const handleCastErrorDB = (err) => {
   const message = `Invalid ${err.path} : ${err.value}`;
   return new AppError(message, 400);
@@ -39,6 +40,7 @@ app.use((req, res, next) => {
 
 app.use("/api/v1/tours", tourRouter);
 app.use("/api/v1/users", userRouter);
+app.use("/api/v1/review", reviewRouter);
 
 app.all("*", (req, res, next) => {
   next(new AppError(`cant't find ${req.originalUrl} on this server!`, 404));
