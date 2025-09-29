@@ -1,7 +1,6 @@
 const mongoose = require("mongoose");
 const { default: slugify } = require("slugify");
 const slug = require("slugify");
-const User = require("./UserModel");
 
 const tourSchema = new mongoose.Schema(
   {
@@ -98,6 +97,11 @@ const tourSchema = new mongoose.Schema(
       description: String,
     },
 
+    ratingsQuantity: {
+      type: Number,
+      default: 0,
+    },
+
     locations: [
       {
         type: {
@@ -129,10 +133,11 @@ const tourSchema = new mongoose.Schema(
 //Document Middleware , runs before the save command and create command
 
 tourSchema.pre("save", function (next) {
-  //Slugify converts the name into of tour into a url-friendly slug string and stores it into slug field
   this.slug = slugify(this.name, { lower: true });
   next();
 });
+
+tourSchema.index({ price: 1, ratingsAverage: -1 }); //ascending order
 
 //this points to document
 //did not persist in database ,we can not access by query
@@ -147,7 +152,6 @@ tourSchema.virtual("reviews", {
 });
 
 tourSchema.pre(/^find/, function (next) {
-  console.log("hi");
   this.find({ secretTour: { $ne: true } }); // ✅ no recursion
   this.populate({ path: "guides", select: "-__v -passwordConfirm" });
   next();

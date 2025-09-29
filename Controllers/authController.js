@@ -13,13 +13,11 @@ const verifyPassword = async (password, hash) => {
   try {
     return await bcrypt.compare(password, hash);
   } catch (err) {
-    console.log(err);
     return false;
   }
 };
 
 exports.signup = catchAsync(async (req, res) => {
-  console.log("Hi");
   const newUser = await user.create({
     name: req.body.name,
     email: req.body.email,
@@ -27,15 +25,12 @@ exports.signup = catchAsync(async (req, res) => {
     passwordConfirm: req.body.passwordConfirm,
     role: req.body.role,
   });
-  console.log("new User Created");
 
   const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET);
-  console.log("TOken created");
 
   res.status(201).json({
     status: "success",
     data: newUser,
-    token: token,
   });
 });
 
@@ -47,7 +42,6 @@ exports.login = catchAsync(async (req, res, next) => {
 
   const loggedUser = await user.findOne({ email }).select("+password");
 
-  console.log(loggedUser);
   const valid = await loggedUser.correctPassword(password);
 
   if (!loggedUser || !valid) {
@@ -96,16 +90,12 @@ exports.protect = catchAsync(async (req, res, next) => {
 
 exports.restrictedTo = () => {
   return (req, res, next) => {
-    console.log("🔥 restrictedTo called");
-    console.log("User: ", req.user);
-
     if (req.user.role !== "admin" && req.user.role !== "lead-guide") {
-      res.status(404).json({
+      return res.status(404).json({
         status: "error",
         message: "You can't delete any tour",
       });
     } else {
-      console.log("✅ Admin access allowed");
     }
 
     next();
@@ -223,12 +213,8 @@ exports.updatePassword = catchAsync(async (req, res, next) => {
     });
   }
 
-  console.log(currentPassword, FoundUser.password);
-
   // 3. Verify current password
   const isMatch = await verifyPassword(currentPassword, FoundUser.password);
-
-  console.log(isMatch);
 
   if (!isMatch) {
     return res.status(401).json({

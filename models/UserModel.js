@@ -51,6 +51,7 @@ const userSchema = new mongoose.Schema({
 Hashes the plain text password using bcrypt with 10 salt rounds.
 Replaces the plain password with the hashed one before saving to the database.
 */
+
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
   this.password = await bcrypt.hash(this.password, 10);

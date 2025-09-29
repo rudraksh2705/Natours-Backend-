@@ -1,6 +1,7 @@
 const fs = require("fs");
 const Tour = require("../models/toursModel");
 const catchAsync = require("../utils/catchAsync");
+const FactoryHandler = require("./FactoryHandler");
 
 exports.aliasTopTours = (req, res, next) => {
   req.query.limit = "5";
@@ -16,10 +17,11 @@ class APIFeatures {
   }
 
   filter() {
+    const queryObj = { ...this.queryObj };
     const excludedFields = ["page", "sort", "fields", "limit"];
-    excludedFields.forEach((el) => delete this.queryObj[el]);
+    excludedFields.forEach((el) => delete queryObj[el]);
 
-    let queryStr = JSON.stringify(this.queryObj);
+    let queryStr = JSON.stringify(queryObj);
     queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
 
     this.query = this.query.find(JSON.parse(queryStr));
@@ -76,9 +78,10 @@ exports.getAllTours = catchAsync(async (req, res) => {
 
 // GET SINGLE TOUR
 exports.getTour = catchAsync(async (req, res, next) => {
+  console.log(req.params.id);
   const tour = await Tour.findById(req.params.id).populate("reviews");
 
-  // console.log(tour);
+  console.log(tour);
   if (!tour) {
     return res.status(404).json({
       status: "fail",
@@ -110,43 +113,9 @@ exports.createTour = catchAsync(async (req, res, next) => {
 });
 
 // UPDATE TOUR
-exports.updateTour = catchAsync(async (req, res, next) => {
-  const tour = await Tour.findByIdAndUpdate(req.params.id, req.body, {
-    new: true,
-    runValidators: true,
-  });
-
-  if (!tour) {
-    return res.status(404).json({
-      status: "fail",
-      message: "Tour not found",
-    });
-  }
-
-  res.status(200).json({
-    status: "success",
-    data: {
-      tour,
-    },
-  });
-});
-
+exports.updateTour = FactoryHandler.updateOne(Tour);
 // DELETE TOUR
-exports.deleteTour = catchAsync(async (req, res, next) => {
-  const deletedTour = await Tour.findByIdAndDelete(req.params.id);
-
-  if (!deletedTour) {
-    return res.status(404).json({
-      status: "fail",
-      message: "Tour not found",
-    });
-  }
-
-  res.status(204).json({
-    status: "success",
-    data: null,
-  });
-});
+exports.deleteTour = FactoryHandler.deleteOne(Tour);
 
 // GET TOUR STATS
 exports.getTourStats = catchAsync(async (req, res) => {
