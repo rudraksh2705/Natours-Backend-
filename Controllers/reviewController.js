@@ -2,11 +2,17 @@ const catchAsync = require("../utils/catchAsync");
 const appError = require("../utils/appError");
 const Review = require("../models/reviewModel");
 const Tour = require("../models/toursModel");
+const handleFactory = require("./FactoryHandler");
 
 exports.addReviews = catchAsync(async (req, res, next) => {
   let { tour, user, description, rating } = req.body;
   if (!tour) tour = req.params.tourId;
   if (!user) user = req.user.id;
+
+  const Checkreview = await Review.findOne({ $and: [{ tour }, { user }] });
+  if (Checkreview) {
+    return next(new appError("You have already reviewed on this tour", 401));
+  }
 
   if (!description || !rating) {
     return next(new appError("Please fill all fields", 401));
@@ -55,6 +61,6 @@ exports.getReviews = catchAsync(async (req, res, next) => {
   });
 });
 
-exports.deleteReview;
+exports.deleteReview = handleFactory.deleteOne(Review);
 
-exports.updateReview;
+exports.updateReview = handleFactory.updateOne(Review);
