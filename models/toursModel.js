@@ -152,7 +152,7 @@ tourSchema.virtual("reviews", {
 });
 
 tourSchema.pre(/^find/, function (next) {
-  this.find({ secretTour: { $ne: true } }); // ✅ no recursion
+  this.find({ secretTour: { $ne: true } });
   this.populate({ path: "guides", select: "-__v -passwordConfirm" });
   next();
 });

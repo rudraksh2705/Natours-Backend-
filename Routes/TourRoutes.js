@@ -16,8 +16,11 @@ Router.route("/top-5-cheap").get(
   tourController.getAllTours
 );
 
+// Public route for overview page (no authentication required)
+Router.route("/").get(tourController.getAllTours);
+
 Router.route("/")
-  .get(authController.protect, tourController.getAllTours)
+  .get(tourController.getAllTours)
   .post(tourController.createTour);
 
 Router.route("/:id")

@@ -13,7 +13,7 @@ const reviewSchema = new mongoose.Schema(
       required: true,
       ref: "user",
     },
-    description: {
+    review: {
       type: String,
       required: true,
     },
@@ -31,12 +31,12 @@ const reviewSchema = new mongoose.Schema(
 reviewSchema.pre(/^find/, function (next) {
   this.populate({
     path: "user",
-    select: "email",
+    select: "email photo name",
   });
   next();
 });
 
-reviewSchema.statics.calculateAverageRating = async function (tour) {
+reviewSchema.statics.calculateAverageRating = async function (tourId) {
   const stats = await this.aggregate([
     {
       $match: {

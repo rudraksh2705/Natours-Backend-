@@ -9,6 +9,31 @@ const bcrypt = require("bcryptjs");
 
 const secret = process.env.JWT_SECRET;
 
+const createSendToken = (user, statusCode, res) => {
+  const token = jwt.sign({ id: user._id }, secret);
+  console.log(token);
+
+  const cookieOptions = {
+    httpOnly: true,
+    expires: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+  };
+
+  res.cookie("jwt", token, cookieOptions);
+
+  // Remove password from output
+  user.password = undefined;
+
+  res.status(statusCode).json({
+    status: "success",
+    token,
+    data: {
+      user,
+    },
+  });
+};
+
 const verifyPassword = async (password, hash) => {
   try {
     return await bcrypt.compare(password, hash);
@@ -26,12 +51,7 @@ exports.signup = catchAsync(async (req, res) => {
     role: req.body.role,
   });
 
-  const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET);
-
-  res.status(201).json({
-    status: "success",
-    data: newUser,
-  });
+  createSendToken(newUser, 201, res);
 });
 
 exports.login = catchAsync(async (req, res, next) => {
@@ -42,20 +62,21 @@ exports.login = catchAsync(async (req, res, next) => {
 
   const loggedUser = await user.findOne({ email }).select("+password");
 
+  if (!loggedUser) {
+    return next(new AppError("No such a user", 401));
+  }
+
   const valid = await loggedUser.correctPassword(password);
+  console.log(valid);
 
   if (!loggedUser || !valid) {
     return res.status(401).json({
-      status: "error",
+      status: "failed",
       message: "Password or email is incorrect",
     });
   }
-
-  const token = jwt.sign({ id: loggedUser._id }, secret);
-  res.status(200).json({
-    status: "success",
-    token,
-  });
+  console.log("Working");
+  return createSendToken(loggedUser, 200, res);
 });
 
 exports.protect = catchAsync(async (req, res, next) => {
@@ -175,12 +196,7 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   await FoundedUser.save();
 
   // 4. Log the user in, send JWT
-  const token = jwt.sign({ id: FoundedUser._id }, secret);
-
-  res.status(200).json({
-    status: "success",
-    token,
-  });
+  createSendToken(FoundedUser, 200, res);
 });
 
 exports.updatePassword = catchAsync(async (req, res, next) => {
@@ -232,13 +248,7 @@ exports.updatePassword = catchAsync(async (req, res, next) => {
   await FoundUser.save();
 
   // 5. Send new token
-  const newToken = jwt.sign({ id: FoundUser._id }, secret);
-
-  res.status(200).json({
-    status: "success",
-    message: "Password updated successfully",
-    token: newToken,
-  });
+  createSendToken(FoundUser, 200, res);
 });
 
 exports.updateInfo = catchAsync(async (req, res) => {
@@ -286,4 +296,20 @@ exports.updateInfo = catchAsync(async (req, res) => {
       error: err.message,
     });
   }
+});
+
+exports.isAuthenticated = catchAsync(async (req, res) => {
+  if (req.cookies.jwt) {
+    const decoded = await promisify(jwt.verify)(req.cookies.jwt, secret);
+    const freshUser = await user.findById(decoded.id);
+    if (!freshUser) {
+      next();
+    }
+    if (freshUser.changePasswrodAfter(decoded.iat)) {
+      next();
+    }
+    req.locals.user = freshUser;
+    next();
+  }
+  next();
 });
