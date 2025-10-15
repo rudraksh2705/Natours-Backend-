@@ -43,13 +43,17 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use("/", viewRouter);
 app.use("/api/v1/tours", tourRouter);
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/review", reviewRouter);
+app.use("/", viewRouter);
 
 app.all("*", (req, res, next) => {
   next(new AppError(`cant't find ${req.originalUrl} on this server!`, 404));
+});
+
+app.get("/test", (req, res) => {
+  res.send("Server is working fine");
 });
 
 const sendErrorDev = (err, res) => {
